@@ -6,5 +6,5 @@ edition = "2024"
 [dependencies]
 color-eyre = "0.6.5"
 image = "0.25.9"
-ratatui = "0.30.0"
+ratatui = {version = "0.30.0", features=["termion"]}
 ratatui-image = "10.0.2"

@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use ratatui::{
     crossterm::event::{self, Event, KeyEvent, KeyCode, KeyEventKind},
     style::Style,
@@ -33,8 +34,11 @@ pub struct AppMenuState {
 impl AppMenuState {
   pub fn new() -> Self {
     let picker = Picker::from_query_stdio().expect("Term have image capabilities");
-    let dyn_img = image::ImageReader::open("./assets/snake_v2.jpeg").expect("Image is present");
-    let decoded_dyn_img = dyn_img.decode().expect("Image is decodable");
+    let raw_data = include_bytes!(".././assets/snake_v2.jpeg");
+    let mut reader = image::ImageReader::new(Cursor::new(raw_data))
+      .with_guessed_format()
+      .expect("Cursor io never fails");
+    let decoded_dyn_img = reader.decode().expect("Image is decodable");
     let app_image = picker.new_resize_protocol(decoded_dyn_img);
     let table_state = TableState::default();
     Self { image_state: app_image, table_state }
@@ -61,7 +65,7 @@ impl AppMenuState {
   
   pub fn draw(&mut self, frame: &mut Frame) {
     // Prepare general menu layout
-    let vertical = Layout::horizontal([
+    let vertical = Layout::vertical([
       Length(64),
       Length(25),
       Min(0)
@@ -85,6 +89,7 @@ impl AppMenuState {
         Length(25)
     ];
     let table = Table::new(rows, widths)
+        .column_spacing(5)
         // You can set the style of the entire Table.
         .style(Style::new().blue())
         // It has an optional footer, which is simply a Row always visible at the bottom.
@@ -92,7 +97,7 @@ impl AppMenuState {
         // As any other widget, a Table can be wrapped in a Block.
         .block(Block::new().title("Main Menu"))
         // The selected row, column, cell and its content can also be styled.
-        .row_highlight_style(Style::new().reversed())
+        .row_highlight_style(Style::new().reversed().slow_blink())
         .column_highlight_style(Style::new().red())
         .cell_highlight_style(Style::new().blue())
         // ...and potentially show a symbol in front of the selection.

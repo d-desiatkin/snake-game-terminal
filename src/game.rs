@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 use rand::rand_core::{TryRngCore, OsRng};
 use ratatui::{
   Frame,
-  crossterm::event::{self, Event, KeyEvent, KeyCode, KeyEventKind},
-  layout::{Constraint, Layout, Position, Rect, Flex},
+  crossterm::event::{KeyEvent, KeyCode, KeyEventKind},
+  layout::{Constraint, Layout, Rect, Flex},
   style::{Color, Style, Stylize},
   symbols::Marker,
   text::Line as TLine,
@@ -422,7 +422,6 @@ impl AppGameState {
           self.enter_char(to_insert);
           return GameAction::DoNothing;
         },
-        KeyCode::Backspace => self.delete_char(),
         KeyCode::Left => {
           self.move_cursor_left();
           return GameAction::DoNothing;

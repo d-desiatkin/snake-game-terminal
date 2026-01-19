@@ -13,25 +13,16 @@ use menu::{AppMenuState, MenuAction};
 use game::{AppGameState, GameAction};
 use leaderboard::{AppLeaderboardState, LeaderboardAction};
 
-use std::io;
 use std::fmt;
 use std::time::{Duration, Instant};
 use std::collections::LinkedList;
 
-use color_eyre::{eyre::Context, Result, Report};
+use color_eyre::{eyre::Context, Result};
 use ratatui::{
-    Terminal,
-    backend::{Backend, TermionBackend},
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
-    widgets::Paragraph,
-    layout::{
-      Constraint::{self, Length, Max, Min, Percentage, Ratio},
-      Layout, Rect
-    },
-    text::Line,
+    backend::Backend,
+    crossterm::event::{self, Event},
     DefaultTerminal, Frame,
 };
-use ratatui_image::StatefulImage;
 
 #[used]
 #[unsafe(link_section = ".leaderboard")]
@@ -84,7 +75,7 @@ impl EventHandler {
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
       loop {
-        let mut action = Action::DoNothing;
+        let _action = Action::DoNothing;
         if event::poll(tick_rate)
             .context("event poll failed").unwrap() {
           let event = event::read().context("event read failed").unwrap();
@@ -114,9 +105,9 @@ struct App {
 
 impl App {
   fn new() -> Self {
-    let mut menu_state: AppState = AppState::Menu(AppMenuState::new());
-    let mut game_state: AppState = AppState::Game(AppGameState::new());
-    let mut leaderboard_state: AppState = 
+    let menu_state: AppState = AppState::Menu(AppMenuState::new());
+    let game_state: AppState = AppState::Game(AppGameState::new());
+    let leaderboard_state: AppState = 
       AppState::Leaderboard(unsafe { AppLeaderboardState::new() } );
     
     let mut states = LinkedList::<AppState>::new();
@@ -137,7 +128,7 @@ impl App {
   /// Run the application loop. This is where you would handle events and update the 
   /// application state.
   fn run(&mut self, mut terminal: DefaultTerminal) -> Result<()> {
-      let mut event_handler = EventHandler::new(self.tick_rate / 10);
+      let event_handler = EventHandler::new(self.tick_rate / 10);
       let mut actions = Vec::<Action>::new();
       loop {
         // Draw all primitives for current state
@@ -154,7 +145,7 @@ impl App {
         
         // Update game world if needed
         {
-          let mut current_state = self.states
+          let current_state = self.states
               .front_mut()
               .expect("Valid current state on first position");
           let mut game_actions = Vec::<GameAction>::new();
@@ -190,7 +181,7 @@ impl App {
   pub fn handle_event(&mut self, event: Event) -> Action {
     // Process menu app state events
     {
-      let mut current_state = self.states
+      let current_state = self.states
         .front_mut()
         .expect("Valid current state on first position");
       if let AppState::Menu(app_menu_state) = current_state {
@@ -229,7 +220,7 @@ impl App {
     }
     // Process game app state events
     {
-      let mut current_state = self.states
+      let current_state = self.states
           .front_mut()
           .expect("Valid current state on first position");
       if let AppState::Game(app_game_state) = current_state {
@@ -266,7 +257,7 @@ impl App {
     }
     
     {
-      let mut current_state = self.states
+      let current_state = self.states
           .front_mut()
           .expect("Valid current state on first position");
       if let AppState::Leaderboard(app_leaderboard_state) = current_state {

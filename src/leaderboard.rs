@@ -3,16 +3,15 @@ use crate::LEADERBOARD;
 use memmap2::MmapOptions;
 use object::{File, Object, ObjectSection};
 use std::env;
-use std::error::Error;
 use std::fs::{self, OpenOptions};
 use std::path::PathBuf;
 
 
 use ratatui::{
   Frame,
-  crossterm::event::{self, Event, KeyEvent, KeyCode, KeyEventKind},
-  layout::{Constraint, Layout, Position, Rect, Flex},
-  widgets::{Paragraph, Row, Table, TableState, Block},
+  crossterm::event::{KeyEvent, KeyCode, KeyEventKind},
+  layout::{Constraint, Layout, Flex},
+  widgets::{Row, Table, TableState, Block},
   style::Style,
 };
 
@@ -76,7 +75,7 @@ impl AppLeaderboardState {
     fs::copy(&current_exe, &new_exe).unwrap();
 
     let file = OpenOptions::new().read(true).write(true).open(&new_exe).unwrap();
-    let mut buf = unsafe { MmapOptions::new().map_mut(&file) }.unwrap();
+    let buf = unsafe { MmapOptions::new().map_mut(&file) }.unwrap();
     Self {
       leaderboard,
       table_state,
@@ -119,7 +118,7 @@ impl AppLeaderboardState {
   
   pub fn update_board(&mut self, name: &str, score: f64) {
     let mut index = 11;
-    for (i, (ln, ls)) in self.leaderboard.iter().enumerate() {
+    for (i, (_ln, ls)) in self.leaderboard.iter().enumerate() {
       if score as u16 > *ls {
         index = i;
         break;

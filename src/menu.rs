@@ -1,8 +1,8 @@
 use std::io::Cursor;
 use ratatui::{
-    crossterm::event::{self, Event, KeyEvent, KeyCode, KeyEventKind},
+    crossterm::event::{KeyEvent, KeyCode, KeyEventKind},
     style::Style,
-    widgets::{Paragraph, Row, Table, TableState, Block},
+    widgets::{Row, Table, TableState, Block},
     layout::{
       Constraint,
       Flex, Layout
@@ -11,8 +11,6 @@ use ratatui::{
 use ratatui_image::{
   picker::Picker,
   StatefulImage,
-  Resize,
-  ResizeEncodeRender,
   protocol::StatefulProtocol,
 };
 
@@ -41,7 +39,7 @@ impl AppMenuState {
   pub fn new() -> Self {
     let picker = Picker::from_query_stdio().expect("Term have image capabilities");
     let raw_data = include_bytes!(".././assets/snake_v2.jpeg");
-    let mut reader = image::ImageReader::new(Cursor::new(raw_data))
+    let reader = image::ImageReader::new(Cursor::new(raw_data))
       .with_guessed_format()
       .expect("Cursor io never fails");
     let decoded_dyn_img = reader.decode().expect("Image is decodable");

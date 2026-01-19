@@ -4,7 +4,7 @@ use ratatui::{
   Frame,
   crossterm::event::{self, Event, KeyEvent, KeyCode, KeyEventKind},
   layout::{Constraint, Layout, Position, Rect, Flex},
-  style::{Color, Stylize},
+  style::{Color, Style, Stylize},
   symbols::Marker,
   text::Line as TLine,
   widgets::{
@@ -37,6 +37,8 @@ pub struct AppGameState {
   snake: SnakeState,
   new_food: Option<(f64, f64)>,
   playground: Rect,
+  username: String,
+  character_index: usize,
   lost_flag: bool,
   playground_borders_kill: bool,
 }
@@ -75,6 +77,8 @@ impl AppGameState {
       snake,
       new_food: None,
       playground,
+      username: String::from(""),
+      character_index: 0,
       lost_flag: false,
       playground_borders_kill: false
     }
@@ -103,14 +107,17 @@ impl AppGameState {
         let area = popup_area(area, 60, 20);
         frame.render_widget(Clear, area); //this clears out the background
         frame.render_widget(block, area);
-        let area = popup_area(area, 60, 20);
+        let area = popup_area(area, 80, 40);
         let paragraph = Paragraph::new(
             vec![
-              TLine::raw("Game Over").slow_blink(),
+              TLine::raw("Game Over").slow_blink().centered(),
               TLine::raw(format!("Your current score is: {}", self.snake.total_length)),
-              TLine::raw("Press q to return to main menu"),
+              TLine::raw("Enter your nickname (max 16 characters):"),
+              TLine::raw(
+                format!("{}", self.username.as_str())
+              ).style(Style::default().fg(Color::Yellow)),
+              TLine::raw("Press ENTER to confirm and exit."),
             ])
-            .centered()
             .wrap(Wrap { trim: true });
         frame.render_widget(paragraph, area);
     }
@@ -171,50 +178,6 @@ impl AppGameState {
         line.y2 -= 0.5;
       }
     }
-    if !self.playground_borders_kill {
-      match head_segment.direction {
-        SnakeSegmentDirection::Left => {
-          if line.x2 <= f64::from(self.playground.left()) {
-            let x = f64::from(self.playground.right());
-            let y = line.y2;
-            self.snake.segments.push_front(SnakeSegment{
-              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
-              direction: SnakeSegmentDirection::Left,
-            });
-          }
-        },
-        SnakeSegmentDirection::Up => {
-          if line.y2 >= f64::from(self.playground.bottom()) {
-            let y = f64::from(self.playground.top());
-            let x = line.x2;
-            self.snake.segments.push_front(SnakeSegment{
-              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
-              direction: SnakeSegmentDirection::Up,
-            });
-          }
-        },
-        SnakeSegmentDirection::Right => {
-          if line.x2 >= f64::from(self.playground.right()) {
-            let x = f64::from(self.playground.left());
-            let y = line.y2;
-            self.snake.segments.push_front(SnakeSegment{
-              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
-              direction: SnakeSegmentDirection::Right,
-            });
-          }
-        },
-        SnakeSegmentDirection::Down => {
-          if line.y2 <= f64::from(self.playground.top()) {
-            let y = f64::from(self.playground.bottom());
-            let x = line.x2;
-            self.snake.segments.push_front(SnakeSegment{
-              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
-              direction: SnakeSegmentDirection::Down,
-            });
-          }
-        },
-      }
-    }
   }
   
   fn move_snake_tail(&mut self) {
@@ -231,6 +194,8 @@ impl AppGameState {
         }
       }
       // Mark possibly zero length segments to deletion
+      // They appear after teleport and immediate turn of
+      // snake head
       if relative_eq!(line.x1, line.x2) && relative_eq!(line.y1, line.y2) {
         delete_last = true;
       }
@@ -255,6 +220,61 @@ impl AppGameState {
     }
     if delete_last {
       self.snake.segments.pop_back();
+    }
+  }
+  
+  fn teleport_snake(&mut self) {
+    let head_segment = self.snake.segments
+      .front_mut()
+      .expect("Snake always have 1 segment");
+    let head_line = &mut head_segment.line;
+    if !self.playground_borders_kill {
+      match head_segment.direction {
+        SnakeSegmentDirection::Left => {
+          if head_line.x2 < f64::from(self.playground.left()) {
+            let x = f64::from(self.playground.right());
+            let y = head_line.y2;
+            self.snake.segments.push_front(SnakeSegment{
+              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
+              direction: SnakeSegmentDirection::Left,
+            });
+            self.move_snake_tail();
+          }
+        },
+        SnakeSegmentDirection::Up => {
+          if head_line.y2 > f64::from(self.playground.bottom()) {
+            let y = f64::from(self.playground.top());
+            let x = head_line.x2;
+            self.snake.segments.push_front(SnakeSegment{
+              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
+              direction: SnakeSegmentDirection::Up,
+            });
+            self.move_snake_tail();
+          }
+        },
+        SnakeSegmentDirection::Right => {
+          if head_line.x2 > f64::from(self.playground.right()) {
+            let x = f64::from(self.playground.left());
+            let y = head_line.y2;
+            self.snake.segments.push_front(SnakeSegment{
+              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
+              direction: SnakeSegmentDirection::Right,
+            });
+            self.move_snake_tail();
+          }
+        },
+        SnakeSegmentDirection::Down => {
+          if head_line.y2 < f64::from(self.playground.top()) {
+            let y = f64::from(self.playground.bottom());
+            let x = head_line.x2;
+            self.snake.segments.push_front(SnakeSegment{
+              line: Line {x1: x, y1: y, x2: x, y2: y, color: Color::Green},
+              direction: SnakeSegmentDirection::Down,
+            });
+            self.move_snake_tail();
+          }
+        },
+      }
     }
   }
   
@@ -321,13 +341,99 @@ impl AppGameState {
       self.move_snake_head();
       // Move snake tail on 1 pt
       self.move_snake_tail();
+      // After all increments / decrements check
+      // whether we should wrap snake across playfield
+      self.teleport_snake();
       // Check lose conditions
       self.check_lose_conditions();
     }
   }
   
+  fn move_cursor_left(&mut self) {
+    let cursor_moved_left = self.character_index.saturating_sub(1);
+    self.character_index = self.clamp_cursor(cursor_moved_left);
+    }
+
+  fn move_cursor_right(&mut self) {
+    let cursor_moved_right = self.character_index.saturating_add(1);
+    self.character_index = self.clamp_cursor(cursor_moved_right);
+  }
+
+  fn enter_char(&mut self, new_char: char) {
+    let index = self.byte_index();
+    self.username.insert(index, new_char);
+    self.move_cursor_right();
+  }
+  
+    /// Returns the byte index based on the character position.
+    ///
+    /// Since each character in a string can be contain multiple bytes, it's necessary to calculate
+    /// the byte index based on the index of the character.
+  fn byte_index(&self) -> usize {
+    self.username
+        .char_indices()
+        .map(|(i, _)| i)
+        .nth(self.character_index)
+        .unwrap_or(self.username.len())
+  }
+  
+  fn delete_char(&mut self) {
+    let is_not_cursor_leftmost = self.character_index != 0;
+    if is_not_cursor_leftmost {
+      // Method "remove" is not used on the saved text for deleting the selected char.
+      // Reason: Using remove on String works on bytes instead of the chars.
+      // Using remove would require special care because of char boundaries.
+
+      let current_index = self.character_index;
+      let from_left_to_current_index = current_index - 1;
+      
+      // Getting all characters before the selected character.
+      let before_char_to_delete = self.username.chars().take(from_left_to_current_index);
+      // Getting all characters after selected character.
+      let after_char_to_delete = self.username.chars().skip(current_index);
+
+      // Put all characters together except the selected one.
+      // By leaving the selected one out, it is forgotten and therefore deleted.
+      self.username = before_char_to_delete.chain(after_char_to_delete).collect();
+      self.move_cursor_left();
+    }
+  }
+  
+  fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+    new_cursor_pos.clamp(0, self.username.chars().count())
+  }
+
+  fn reset_cursor(&mut self) {
+    self.character_index = 0;
+  }
+  
   pub fn handle_key_press(&mut self, key: KeyEvent) -> GameAction {
     if key.kind != KeyEventKind::Press { return GameAction::DoNothing; }
+    if self.lost_flag {
+      match key.code {
+        KeyCode::Enter => {
+          return GameAction::ReturnToMenu(self.username.clone(), self.snake.total_length);
+        },
+        KeyCode::Backspace => {
+          self.delete_char();
+          return GameAction::DoNothing;
+        },
+        KeyCode::Char(to_insert) => {
+          self.enter_char(to_insert);
+          return GameAction::DoNothing;
+        },
+        KeyCode::Backspace => self.delete_char(),
+        KeyCode::Left => {
+          self.move_cursor_left();
+          return GameAction::DoNothing;
+        },
+        KeyCode::Right => {
+          self.move_cursor_right();
+          return GameAction::DoNothing;
+        },
+        _ => return GameAction::DoNothing,
+      }
+    }
     let cur_head_segment = &self.snake.segments
       .front()
       .expect("Snake always have at least 1 segment");
@@ -360,12 +466,6 @@ impl AppGameState {
         }
         GameAction::TurnRight
       },
-      KeyCode::Char('q') => {
-        if self.lost_flag {
-          return GameAction::ReturnToMenu("test".to_string(), self.snake.total_length);
-        }
-        GameAction::DoNothing
-      }
       _ => GameAction::DoNothing
     }
   }

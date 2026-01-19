@@ -4,11 +4,17 @@ use ratatui::{
     style::Style,
     widgets::{Paragraph, Row, Table, TableState, Block},
     layout::{
-      Constraint::{Length, Min},
-      Layout
+      Constraint,
+      Flex, Layout
     }, Frame,
 };
-use ratatui_image::{picker::Picker, StatefulImage, protocol::StatefulProtocol};
+use ratatui_image::{
+  picker::Picker,
+  StatefulImage,
+  Resize,
+  ResizeEncodeRender,
+  protocol::StatefulProtocol,
+};
 
 #[derive(PartialEq)]
 enum MenuState {
@@ -66,19 +72,24 @@ impl AppMenuState {
   pub fn draw(&mut self, frame: &mut Frame) {
     // Prepare general menu layout
     let vertical = Layout::vertical([
-      Length(64),
-      Length(25),
-      Min(0)
+      Constraint::Percentage(60),
+    ]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([
+      Constraint::Percentage(34),
+    ]).flex(Flex::Center);
+    let [area] = vertical.areas(frame.area());
+    let [area] = horizontal.areas(area);
+    let vertical = Layout::vertical([
+      Constraint::Fill(1),
+      Constraint::Length(6),
     ]);
-    let [image_area, menu_area, _] = vertical.areas(frame.area());
-    
+    let [image_area, menu_area] = vertical.areas(area);
     // Draw image
     let image = StatefulImage::default();
-    let centered_image_area = image_area.centered(Length(64), Min(0));
-    frame.render_stateful_widget(image, centered_image_area, &mut self.image_state);
+    // self.image_state.resize_encode(&Resize::Scale(None), image_area);
+    frame.render_stateful_widget(image, image_area, &mut self.image_state);
     
     // Draw Table
-    let centered_menu_area = menu_area.centered(Length(25), Min(0));
     let rows = [
       Row::new(vec!["New Game"]),
       Row::new(vec!["Leader Board"]),
@@ -86,23 +97,21 @@ impl AppMenuState {
     ];
     // Columns widths are constrained in the same way as Layout...
     let widths = [
-        Length(25)
+        Constraint::Min(33)
     ];
     let table = Table::new(rows, widths)
-        .column_spacing(5)
+        .block(Block::bordered())
         // You can set the style of the entire Table.
         .style(Style::new().blue())
         // It has an optional footer, which is simply a Row always visible at the bottom.
-        .footer(Row::new(vec!["Updated on Dec 28"]))
-        // As any other widget, a Table can be wrapped in a Block.
-        .block(Block::new().title("Main Menu"))
+        .footer(Row::new(vec!["↑↓ - to navigate | space - select"]))
         // The selected row, column, cell and its content can also be styled.
         .row_highlight_style(Style::new().reversed().slow_blink())
         .column_highlight_style(Style::new().red())
         .cell_highlight_style(Style::new().blue())
         // ...and potentially show a symbol in front of the selection.
         .highlight_symbol(">>");    
-    frame.render_stateful_widget(table, centered_menu_area, &mut self.table_state);
+    frame.render_stateful_widget(table, menu_area, &mut self.table_state);
   }
   
   pub fn handle_key_press(&mut self, key: KeyEvent) -> MenuAction {
